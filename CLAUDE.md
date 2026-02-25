@@ -208,3 +208,10 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- Python 3.13+ + watchdog (filesystem events), PyYAML (frontmatter parsing), pathlib (path operations), json (JSONL logging), datetime (ISO 8601 timestamps), signal/os (PID lock management) (001-bronze-tier)
+- Local filesystem — markdown files with YAML frontmatter in Obsidian vault at `/home/safdarayub/Documents/AI_Employee_Vault` (001-bronze-tier)
+
+## Recent Changes
+- 001-bronze-tier: Added Python 3.13+ + watchdog (filesystem events), PyYAML (frontmatter parsing), pathlib (path operations), json (JSONL logging), datetime (ISO 8601 timestamps), signal/os (PID lock management)
