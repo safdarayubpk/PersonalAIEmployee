@@ -1,0 +1,17 @@
+{
+  "high": [
+    "payment", "invoice", "transfer", "bank", "transaction", "refund",
+    "billing", "budget", "salary", "legal", "contract", "agreement",
+    "lawsuit", "compliance", "NDA", "security", "breach",
+    "delete", "remove", "revoke", "password", "credential",
+    "health", "medical", "terminate",
+    "urgent", "emergency", "deadline", "ASAP", "immediately", "critical"
+  ],
+  "medium": [
+    "email", "send", "post", "publish", "reply", "forward",
+    "meeting", "schedule", "review", "approve", "confirm", "update",
+    "project", "client", "proposal", "document", "shared", "action",
+    "API", "webhook", "external", "permission", "admin",
+    "respond", "call", "tomorrow", "today"
+  ]
+}

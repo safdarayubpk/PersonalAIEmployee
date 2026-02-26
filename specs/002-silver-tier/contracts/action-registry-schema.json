@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Action Registry",
+  "description": "Schema for config/actions.json — defines available actions for the action executor",
+  "type": "object",
+  "required": ["actions"],
+  "properties": {
+    "actions": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["action_id", "description", "hitl_required", "module", "function"],
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "pattern": "^[a-z]+\\.[a-z_]+$",
+            "description": "Unique ID in domain.function format"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 5
+          },
+          "hitl_required": {
+            "type": "boolean",
+            "description": "true = requires Pending_Approval gate; false = approval-exempt"
+          },
+          "module": {
+            "type": "string",
+            "pattern": "^actions\\.[a-z_]+$",
+            "description": "Python module path relative to src/ (e.g., actions.email)"
+          },
+          "function": {
+            "type": "string",
+            "pattern": "^[a-z_]+$",
+            "description": "Function name in the module"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

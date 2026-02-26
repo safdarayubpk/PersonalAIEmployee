@@ -1,19 +1,23 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.0 → 1.1.0
+  Version change: 1.2.0 → 1.2.1
   Modified principles:
+    - III. Proactive Autonomy: RALPH_MAX_ITERATIONS default corrected
+      25 → 15, hard cap 20 added (matches spec FR-006 and original
+      hackathon document "10-20 iterations")
+    - VI. Error Handling: errors.jsonl replaced with component-specific
+      JSONL logs (gmail.jsonl, orchestrator.jsonl, etc.) to avoid
+      duplicate logging
+  Previous changes (1.1.0 → 1.2.0):
     - II. HITL Safety: added risk-level classification (routine/sensitive/critical)
     - III. Proactive Autonomy: loop default raised 10 → 25, env var named,
       exhaustion behavior defined
-  Added sections:
-    - Principle VI: Error Handling & Recovery
-    - Structured logging standard (JSON lines, required fields)
-    - Vault file conventions (naming, frontmatter, Needs_Action format)
-  Removed sections: None
-  Clarifications:
-    - "No cloud" scoped to user data transmission (not package mgmt)
-    - Redundant vault-path / dry-run / loop-limit mentions consolidated
+    - IV. Modularity: Silver tier scope updated from "MCP servers" to
+      "action execution" (direct function calls); MCP/FastAPI deferred to Gold
+    - Principle VI: Error Handling & Recovery added
+    - Structured logging standard, vault file conventions, priority vocabulary
+    - Action execution clarification (Silver = importlib, Gold = MCP/FastAPI)
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
     - .specify/templates/spec-template.md ✅ no changes needed
@@ -68,8 +72,9 @@ tiers let routine work flow while protecting high-stakes decisions.
 
 The agent MUST watch for filesystem events via Watchdog and act without
 constant user prompting. Task persistence uses the Ralph Wiggum loop:
-retry until completion or `RALPH_MAX_ITERATIONS` (default: 25, set via
-`.env`). On exhaustion, the agent MUST:
+retry until completion or `RALPH_MAX_ITERATIONS` (default: 15, set via
+`.env`; hard cap: 20 — values above 20 MUST be silently clamped with a
+warning log entry). On exhaustion, the agent MUST:
 1. Log the failure to `Logs/ralph_exhausted.jsonl` with task context.
 2. Create a `Needs_Action` file in the vault describing what stalled.
 3. Stop retrying that task (no silent infinite loops).
@@ -87,13 +92,18 @@ The system MUST follow tier-based progression:
 | Tier | Scope | Cloud allowed |
 |------|-------|---------------|
 | Bronze | Basic vault + 1 watcher + read/write | No |
-| Silver | Multiple watchers + MCP servers + scheduling | No |
+| Silver | Multiple watchers + action execution + scheduling | No |
 | Gold | Full integration (Odoo, social, CEO briefing) | No |
 | Platinum | Cloud hybrid + 24/7 VM + Git sync | Yes (approved) |
 
 Each tier builds incrementally. Implementing a higher tier MUST NOT
 break functionality from lower tiers. A tier is complete only when all
 its test scenarios pass.
+
+**Action execution**: Silver tier uses direct Python function calls via
+`action-executor` (`importlib` dynamic import from `src/actions/`) —
+no HTTP server required. Full MCP/FastAPI servers are deferred to Gold
+tier if needed for external integrations.
 
 **Rationale**: Incremental delivery reduces risk, enables demo-ability
 at every stage, and keeps the hackathon scope manageable.
@@ -111,7 +121,8 @@ economically superior for routine knowledge work.
 ### VI. Error Handling & Recovery
 
 Every component (watcher, orchestrator, MCP server) MUST:
-1. Catch all exceptions and log them to `Logs/errors.jsonl` with
+1. Catch all exceptions and log them to the component's own JSONL
+   log file (e.g., `Logs/gmail.jsonl`, `Logs/orchestrator.jsonl`) with
    timestamp, component name, error message, and stack trace.
 2. Restart automatically via PM2/supervisord on crash (max 5 restarts
    in 60 seconds before entering stopped state).
@@ -132,7 +143,9 @@ agent. Every failure MUST be visible and recoverable.
 
 Python 3.13+ | Claude Code 2.1.x (reasoning) | Obsidian v1.11.x+
 (vault UI) | Playwright (browser automation) | Watchdog (filesystem) |
-MCP servers (actions) | PM2/supervisord (process management).
+Action executor (direct function calls via `importlib`; Silver tier) |
+MCP/FastAPI servers (Gold tier, if needed) | PM2/supervisord (process
+management).
 
 ### Vault
 
@@ -146,6 +159,12 @@ MCP servers (actions) | PM2/supervisord (process management).
   frontmatter with at minimum: `title`, `created`, `tier`, `status`.
 
 ### Needs_Action File Format
+
+**Priority vocabulary**: The canonical frontmatter values are
+`routine`, `sensitive`, and `critical`. These MUST be used in all
+persisted `Needs_Action` files. Watchers MAY use an internal mapping
+scale (e.g., low/medium/high for keyword matching) but MUST convert
+to the canonical values before writing frontmatter.
 
 ```yaml
 ---
@@ -233,4 +252,4 @@ systemd unit file example.
 - **Compliance review**: Before merging any feature branch, verify
   tier boundaries, HITL gates, and local-first data constraints.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-24 | **Last Amended**: 2026-02-24
+**Version**: 1.2.1 | **Ratified**: 2026-02-24 | **Last Amended**: 2026-02-26

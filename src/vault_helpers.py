@@ -136,6 +136,35 @@ def generate_frontmatter(**fields) -> str:
     return "\n".join(lines)
 
 
+# Keys that trigger redaction (FR-016)
+_SENSITIVE_KEY_PATTERNS = ("password", "token", "secret", "api_key", "credential", "auth")
+
+
+def redact_sensitive(data: dict) -> dict:
+    """Return a copy of data with sensitive field values replaced.
+
+    Any key containing one of the sensitive patterns (password, token,
+    secret, api_key, credential, auth) has its value replaced with
+    ***REDACTED***. Nested dicts are redacted recursively.
+
+    Args:
+        data: The dictionary to redact.
+
+    Returns:
+        A new dict with sensitive values replaced.
+    """
+    redacted = {}
+    for key, value in data.items():
+        key_lower = key.lower()
+        if any(pat in key_lower for pat in _SENSITIVE_KEY_PATTERNS):
+            redacted[key] = "***REDACTED***"
+        elif isinstance(value, dict):
+            redacted[key] = redact_sensitive(value)
+        else:
+            redacted[key] = value
+    return redacted
+
+
 def atomic_write(target_path: Path, content: str) -> None:
     """Write content to target_path atomically via temp file + rename.
 
