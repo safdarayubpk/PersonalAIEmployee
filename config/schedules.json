@@ -1,0 +1,8 @@
+{
+  "jobs": [],
+  "defaults": {
+    "timezone": "Asia/Karachi",
+    "priority": "sensitive",
+    "enabled": true
+  }
+}
