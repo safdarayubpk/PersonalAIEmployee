@@ -37,7 +37,7 @@ except ImportError:
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", SKILL_DIR.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
-from vault_helpers import redact_sensitive
+from vault_helpers import redact_sensitive, generate_correlation_id
 
 CREDENTIALS_FILE = PROJECT_ROOT / "credentials.json"
 TOKEN_FILE = PROJECT_ROOT / "token.json"
@@ -192,6 +192,8 @@ def create_needs_action(email: dict, urgency: str, vault_root: Path) -> str:
     subject_slug = slugify(email["subject"])
     attachments_str = ", ".join(email["attachments"]) if email["attachments"] else "none"
 
+    corr_id = generate_correlation_id()
+
     content = f"""---
 title: "email-{sender_slug}-{subject_slug}"
 created: "{ts_str}"
@@ -200,6 +202,7 @@ source: gmail-watcher
 priority: "{urgency}"
 status: needs_action
 gmail_id: "{email['id']}"
+correlation_id: "{corr_id}"
 ---
 
 ## What happened
@@ -317,7 +320,8 @@ def poll_once(service, args, vault_root: Path, log_file: Path,
                   detail=f"Classified as {urgency}, created Needs_Action file",
                   gmail_id=email["id"], sender=email["sender"],
                   subject=email["subject"], urgency=urgency,
-                  needs_action_file=filename, dry_run=not args.live)
+                  needs_action_file=filename, dry_run=not args.live,
+                  correlation_id=email.get("_correlation_id", ""))
 
         print(f"  [{urgency.upper()}] {email['sender']}: {email['subject']} → {filename}")
 

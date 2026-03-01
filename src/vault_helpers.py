@@ -165,6 +165,12 @@ def redact_sensitive(data: dict) -> dict:
     return redacted
 
 
+def generate_correlation_id() -> str:
+    """Generate a unique correlation ID. Delegates to src/correlation.py."""
+    from correlation import generate_correlation_id as _gen
+    return _gen()
+
+
 def atomic_write(target_path: Path, content: str) -> None:
     """Write content to target_path atomically via temp file + rename.
 

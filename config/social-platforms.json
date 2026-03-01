@@ -1,0 +1,40 @@
+{
+  "platforms": {
+    "facebook": {
+      "name": "Facebook",
+      "max_chars": 63206,
+      "api_version": "v19.0",
+      "base_url": "https://graph.facebook.com",
+      "rate_limit_per_hour": 200,
+      "env_vars": {
+        "page_id": "FACEBOOK_PAGE_ID",
+        "access_token": "FACEBOOK_ACCESS_TOKEN"
+      }
+    },
+    "instagram": {
+      "name": "Instagram",
+      "max_chars": 2200,
+      "api_version": "v19.0",
+      "base_url": "https://graph.instagram.com",
+      "rate_limit_per_hour": 200,
+      "daily_post_limit": 25,
+      "requires_image": true,
+      "env_vars": {
+        "business_id": "INSTAGRAM_BUSINESS_ID",
+        "access_token": "FACEBOOK_ACCESS_TOKEN"
+      }
+    },
+    "twitter": {
+      "name": "Twitter/X",
+      "max_chars": 280,
+      "api_version": "v2",
+      "rate_limit_per_15min": 450,
+      "env_vars": {
+        "api_key": "TWITTER_API_KEY",
+        "api_secret": "TWITTER_API_SECRET",
+        "access_token": "TWITTER_ACCESS_TOKEN",
+        "access_token_secret": "TWITTER_ACCESS_TOKEN_SECRET"
+      }
+    }
+  }
+}

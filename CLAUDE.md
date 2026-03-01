@@ -214,6 +214,7 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Local filesystem — markdown files with YAML frontmatter in Obsidian vault at `/home/safdarayub/Documents/AI_Employee_Vault` (001-bronze-tier)
 - Python 3.13+ (existing venv) (002-silver-tier)
 - Filesystem — Obsidian vault at `VAULT_PATH` (default `/home/safdarayub/Documents/AI_Employee_Vault`), JSONL logs, JSON config files (002-silver-tier)
+- Filesystem — Obsidian vault at `VAULT_PATH`, JSONL logs, JSON config files, `Logs/health.json` (circuit breaker state) (003-gold-tier)
 
 ## Recent Changes
 - 001-bronze-tier: Added Python 3.13+ + watchdog (filesystem events), PyYAML (frontmatter parsing), pathlib (path operations), json (JSONL logging), datetime (ISO 8601 timestamps), signal/os (PID lock management)

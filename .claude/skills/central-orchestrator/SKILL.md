@@ -114,14 +114,20 @@ Cap at `batch_size` (default 10) per run. Log remainder as deferred.
 For each queued file, determine the routing path:
 
 1. **Read** the full Needs_Action file content
-2. **Identify source** from frontmatter `source` field:
+2. **Extract or generate correlation_id** from frontmatter:
+   - If `correlation_id` exists → propagate through all log entries
+   - If missing (legacy Bronze/Silver file) → generate retroactively via `src/correlation.py`, log warning
+3. **Identify source** from frontmatter `source` field:
    - `file-drop-watcher` → filesystem origin
    - `gmail-watcher` → email origin
    - `whatsapp-watcher` → message origin
    - `daily-scheduler` → scheduled task origin
-3. **Assess risk** using keyword scan (inline) or risk-assessor subagent
-4. **Create action plan** in `Plans/`
-5. **Determine route**:
+4. **Check circuit breaker** — read `Logs/health.json`:
+   - If target service is degraded/down → mark task as `retry_pending`, skip to next
+   - If healthy → proceed with routing
+5. **Assess risk** using keyword scan (inline) or risk-assessor subagent
+6. **Create action plan** in `Plans/`
+7. **Determine route**:
 
 ```
 Risk Assessment

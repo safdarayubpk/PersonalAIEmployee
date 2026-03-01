@@ -36,7 +36,7 @@ REGISTRY_PATH = PROJECT_ROOT / "config" / "actions.json"
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
-from vault_helpers import redact_sensitive
+from vault_helpers import redact_sensitive, generate_correlation_id
 
 DEFAULT_REGISTRY = {
     "actions": {
@@ -239,7 +239,8 @@ def execute_function(action_config: dict, params: dict) -> dict:
 
 def run_action(action: str, params: dict | None = None, live: bool = False,
                approval_ref: str | None = None,
-               vault_path: str | None = None) -> dict:
+               vault_path: str | None = None,
+               correlation_id: str | None = None) -> dict:
     """Execute an action with HITL gate and dry-run safety.
 
     Args:
@@ -248,6 +249,7 @@ def run_action(action: str, params: dict | None = None, live: bool = False,
         live: If True, execute for real. Default False (dry-run).
         approval_ref: Path to approval file in vault (relative).
         vault_path: Override vault root path.
+        correlation_id: Correlation ID for audit tracing (auto-generated if not provided).
 
     Returns:
         Dict with success, dry_run, detail, and optional result/error.
@@ -256,6 +258,7 @@ def run_action(action: str, params: dict | None = None, live: bool = False,
     vault_root = Path(vault_path or os.environ.get("VAULT_PATH", DEFAULT_VAULT_PATH))
     log_file = vault_root / "Logs" / "actions.jsonl"
     request_id = uuid.uuid4().hex[:8]
+    corr_id = correlation_id or generate_correlation_id()
 
     # Validate
     registry = load_registry()
@@ -274,6 +277,7 @@ def run_action(action: str, params: dict | None = None, live: bool = False,
         log_entry(log_file, component=COMPONENT, action="hitl_block", status="blocked",
                   action_id=action, params=redact_sensitive(params), dry_run=not live,
                   hitl_check=gate["check"], request_id=request_id,
+                  correlation_id=corr_id,
                   detail=f"HITL blocked: {gate['reason']}")
         return {"success": False, "dry_run": not live, "hitl_blocked": True,
                 "pending_file": f"Pending_Approval/{pending_file}",
@@ -284,6 +288,7 @@ def run_action(action: str, params: dict | None = None, live: bool = False,
         log_entry(log_file, component=COMPONENT, action="execute", status="dry_run",
                   action_id=action, params=redact_sensitive(params), dry_run=True,
                   hitl_check=gate["check"], request_id=request_id,
+                  correlation_id=corr_id,
                   detail=f"DRY RUN: Would call {action}")
         return {"success": True, "dry_run": True, "request_id": request_id,
                 "detail": f"DRY RUN: Would call {action} with params {params}"}
@@ -295,7 +300,7 @@ def run_action(action: str, params: dict | None = None, live: bool = False,
     log_entry(log_file, component=COMPONENT, action="execute", status=status,
               action_id=action, params=redact_sensitive(params), dry_run=False,
               hitl_check=gate["check"], approval_ref=approval_ref,
-              request_id=request_id,
+              request_id=request_id, correlation_id=corr_id,
               detail=f"{'Success' if result['success'] else 'Failed'}: {action}",
               error=result.get("error"),
               traceback=result.get("traceback"))
