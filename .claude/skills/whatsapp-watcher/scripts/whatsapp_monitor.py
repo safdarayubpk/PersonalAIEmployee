@@ -40,7 +40,7 @@ WHATSAPP_URL = "https://web.whatsapp.com"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", SKILL_DIR.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
-from vault_helpers import redact_sensitive
+from vault_helpers import redact_sensitive, generate_correlation_id
 
 RISK_KEYWORDS_PATH = PROJECT_ROOT / "config" / "risk-keywords.json"
 
@@ -123,6 +123,8 @@ def create_needs_action(sender: str, chat_name: str, chat_type: str,
     media_str = ", ".join(media_types) if media_types else "none"
     truncated = message_text[:MAX_MSG_CHARS]
 
+    corr_id = generate_correlation_id()
+
     content = f"""---
 title: "whatsapp-{sender_slug}-{subject_slug}"
 created: "{ts_str}"
@@ -131,6 +133,7 @@ source: whatsapp-watcher
 priority: "{urgency}"
 status: needs_action
 chat_type: "{chat_type}"
+correlation_id: "{corr_id}"
 ---
 
 ## What happened

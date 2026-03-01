@@ -1,0 +1,182 @@
+{
+  "servers": [
+    {
+      "name": "fte-email",
+      "domain": "email",
+      "command": "python",
+      "args": ["src/mcp/email_server.py"],
+      "tools": [
+        {
+          "name": "email.send",
+          "description": "Send an email via Gmail API",
+          "hitl_level": "sensitive",
+          "params": {
+            "to": {"type": "string", "required": true},
+            "subject": {"type": "string", "required": true},
+            "body": {"type": "string", "required": true},
+            "cc": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "email.draft",
+          "description": "Draft an email locally without sending",
+          "hitl_level": "routine",
+          "params": {
+            "to": {"type": "string", "required": true},
+            "subject": {"type": "string", "required": true},
+            "body": {"type": "string", "required": true},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "email.search",
+          "description": "Search Gmail inbox for emails matching criteria",
+          "hitl_level": "routine",
+          "params": {
+            "query": {"type": "string", "required": true},
+            "max_results": {"type": "integer", "required": false, "default": 10},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "fte-social",
+      "domain": "social",
+      "command": "python",
+      "args": ["src/mcp/social_server.py"],
+      "tools": [
+        {
+          "name": "social.post_facebook",
+          "description": "Publish a post to a configured Facebook Page",
+          "hitl_level": "sensitive",
+          "params": {
+            "content": {"type": "string", "required": true},
+            "link": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "social.post_instagram",
+          "description": "Publish a post to Instagram Business account",
+          "hitl_level": "sensitive",
+          "params": {
+            "caption": {"type": "string", "required": true},
+            "image_url": {"type": "string", "required": true},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "social.post_twitter",
+          "description": "Publish a tweet to Twitter/X",
+          "hitl_level": "sensitive",
+          "params": {
+            "content": {"type": "string", "required": true},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "social.weekly_summary",
+          "description": "Generate weekly social media activity summary",
+          "hitl_level": "routine",
+          "params": {
+            "period_days": {"type": "integer", "required": false, "default": 7},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "fte-odoo",
+      "domain": "erp",
+      "command": "python",
+      "args": ["src/mcp/odoo_server.py"],
+      "tools": [
+        {
+          "name": "odoo.list_invoices",
+          "description": "List invoices from Odoo",
+          "hitl_level": "routine",
+          "params": {
+            "payment_state": {"type": "string", "required": false},
+            "partner_id": {"type": "integer", "required": false},
+            "limit": {"type": "integer", "required": false, "default": 50},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "odoo.create_invoice",
+          "description": "Create a new customer invoice in Odoo",
+          "hitl_level": "critical",
+          "params": {
+            "partner_id": {"type": "integer", "required": true},
+            "lines": {"type": "array", "required": true},
+            "invoice_date": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "odoo.register_payment",
+          "description": "Register a payment against an existing invoice",
+          "hitl_level": "critical",
+          "params": {
+            "invoice_id": {"type": "integer", "required": true},
+            "amount": {"type": "number", "required": true},
+            "payment_date": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "odoo.financial_summary",
+          "description": "Get aggregated financial summary for a date range",
+          "hitl_level": "routine",
+          "params": {
+            "period_start": {"type": "string", "required": false},
+            "period_end": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "odoo.list_partners",
+          "description": "List contacts/customers from Odoo",
+          "hitl_level": "routine",
+          "params": {
+            "customer_only": {"type": "boolean", "required": false, "default": true},
+            "search": {"type": "string", "required": false},
+            "limit": {"type": "integer", "required": false, "default": 50},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        }
+      ]
+    },
+    {
+      "name": "fte-documents",
+      "domain": "documents",
+      "command": "python",
+      "args": ["src/mcp/documents_server.py"],
+      "tools": [
+        {
+          "name": "docs.generate_report",
+          "description": "Generate a markdown report from vault data",
+          "hitl_level": "routine",
+          "params": {
+            "report_type": {"type": "string", "required": true},
+            "period_days": {"type": "integer", "required": false, "default": 7},
+            "title": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        },
+        {
+          "name": "docs.generate_briefing",
+          "description": "Generate the Monday Morning CEO Briefing",
+          "hitl_level": "routine",
+          "params": {
+            "period_start": {"type": "string", "required": false},
+            "period_end": {"type": "string", "required": false},
+            "correlation_id": {"type": "string", "required": false}
+          }
+        }
+      ]
+    }
+  ]
+}

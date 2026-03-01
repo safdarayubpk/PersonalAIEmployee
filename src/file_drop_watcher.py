@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from vault_helpers import (
     atomic_write,
+    generate_correlation_id,
     generate_frontmatter,
     log_error,
     log_operation,
@@ -101,7 +102,9 @@ class DropHandler(FileSystemEventHandler):
 
         file_type = src_path.suffix or "no extension"
 
-        # Generate frontmatter (6 fields per contracts/needs-action-format.md)
+        corr_id = generate_correlation_id()
+
+        # Generate frontmatter (7 fields per contracts/needs-action-format.md)
         frontmatter = generate_frontmatter(
             title=f"dropped-{original_stem}-{file_type.lstrip('.')}",
             created=ts_str,
@@ -109,6 +112,7 @@ class DropHandler(FileSystemEventHandler):
             source=COMPONENT,
             priority="routine",
             status="needs_action",
+            correlation_id=corr_id,
         )
 
         # Generate body sections

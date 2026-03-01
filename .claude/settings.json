@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "fte-email": {
+      "command": "/home/safdarayub/Desktop/claude/fte/.venv/bin/python",
+      "args": ["src/mcp/email_server.py"],
+      "cwd": "/home/safdarayub/Desktop/claude/fte",
+      "env": {
+        "VAULT_PATH": "/home/safdarayub/Documents/AI_Employee_Vault",
+        "DRY_RUN": "true"
+      }
+    },
+    "fte-social": {
+      "command": "/home/safdarayub/Desktop/claude/fte/.venv/bin/python",
+      "args": ["src/mcp/social_server.py"],
+      "cwd": "/home/safdarayub/Desktop/claude/fte",
+      "env": {
+        "VAULT_PATH": "/home/safdarayub/Documents/AI_Employee_Vault",
+        "DRY_RUN": "true"
+      }
+    },
+    "fte-odoo": {
+      "command": "/home/safdarayub/Desktop/claude/fte/.venv/bin/python",
+      "args": ["src/mcp/odoo_server.py"],
+      "cwd": "/home/safdarayub/Desktop/claude/fte",
+      "env": {
+        "VAULT_PATH": "/home/safdarayub/Documents/AI_Employee_Vault",
+        "DRY_RUN": "true"
+      }
+    },
+    "fte-documents": {
+      "command": "/home/safdarayub/Desktop/claude/fte/.venv/bin/python",
+      "args": ["src/mcp/documents_server.py"],
+      "cwd": "/home/safdarayub/Desktop/claude/fte",
+      "env": {
+        "VAULT_PATH": "/home/safdarayub/Documents/AI_Employee_Vault",
+        "DRY_RUN": "true"
+      }
+    }
+  }
+}

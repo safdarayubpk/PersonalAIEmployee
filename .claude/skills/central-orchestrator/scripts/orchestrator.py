@@ -35,7 +35,7 @@ PRIORITY_ORDER = {"critical": 0, "sensitive": 1, "routine": 2}
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT",
                     Path(__file__).resolve().parent.parent.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
-from vault_helpers import redact_sensitive
+from vault_helpers import redact_sensitive, generate_correlation_id
 
 RISK_KEYWORDS_PATH = PROJECT_ROOT / "config" / "risk-keywords.json"
 
@@ -110,6 +110,16 @@ def scan_needs_action(vault_root: Path, source_filter: str | None) -> list[dict]
         if source_filter and source_filter not in source:
             continue
 
+        # Extract or generate correlation_id (T054/T056)
+        corr_id = fm.get("correlation_id", "")
+        if not corr_id:
+            corr_id = generate_correlation_id()
+            log_entry(vault_root / "Logs" / "orchestrator.jsonl",
+                      component=COMPONENT, action="generate_correlation_id",
+                      status="warning", file=path.name,
+                      correlation_id=corr_id,
+                      detail=f"Missing correlation_id — generated retroactively for {path.name}")
+
         files.append({
             "path": path,
             "filename": path.name,
@@ -120,6 +130,7 @@ def scan_needs_action(vault_root: Path, source_filter: str | None) -> list[dict]
             "type": fm.get("type", ""),
             "content": content,
             "frontmatter": fm,
+            "correlation_id": corr_id,
         })
 
     return files
@@ -351,6 +362,7 @@ def process_file(file_info: dict, vault_root: Path, log_file: Path) -> dict:
               priority=file_info["priority"], risk_level=risk_level,
               route=route, matched_keywords=matched,
               mcp=mcp_result,
+              correlation_id=file_info.get("correlation_id", ""),
               detail=f"Routed {file_info['filename']} to {route}")
 
     return {"route": route, "risk_level": risk_level, "mcp": mcp_result}

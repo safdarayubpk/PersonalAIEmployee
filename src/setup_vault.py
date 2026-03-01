@@ -31,6 +31,7 @@ VAULT_FOLDERS = [
     "Approved",
     "Plans",
     "Logs",
+    "Briefings",
 ]
 
 # Template directory relative to this script

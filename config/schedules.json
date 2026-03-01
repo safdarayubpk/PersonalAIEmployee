@@ -1,5 +1,15 @@
 {
-  "jobs": [],
+  "jobs": [
+    {
+      "task_name": "weekly-ceo-briefing",
+      "cron": "0 20 * * 0",
+      "description": "Generate Monday Morning CEO Briefing",
+      "action": "docs.generate_briefing",
+      "priority": "medium",
+      "source": "daily-scheduler",
+      "enabled": true
+    }
+  ],
   "defaults": {
     "timezone": "Asia/Karachi",
     "priority": "sensitive",

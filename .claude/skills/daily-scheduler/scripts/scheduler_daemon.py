@@ -35,7 +35,7 @@ COMPONENT = "daily-scheduler"
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT",
                     Path(__file__).resolve().parent.parent.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
-from vault_helpers import redact_sensitive
+from vault_helpers import redact_sensitive, generate_correlation_id
 
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "schedules.json"
 DEFAULT_TIMEZONE = "Asia/Karachi"
@@ -62,6 +62,8 @@ def create_needs_action(job_id: str, description: str, priority: str,
     filename = f"scheduled-{job_id}-{ts_filename}.md"
     filepath = vault_root / "Needs_Action" / filename
 
+    corr_id = generate_correlation_id()
+
     content = f"""---
 title: "scheduled-{job_id}"
 created: "{ts_str}"
@@ -72,6 +74,7 @@ status: needs_action
 type: scheduled
 task: "{job_id}"
 schedule: "{schedule_str}"
+correlation_id: "{corr_id}"
 ---
 
 ## What happened
