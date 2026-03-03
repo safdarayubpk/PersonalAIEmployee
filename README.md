@@ -1,5 +1,7 @@
 # Personal AI Employee
 
+**Hackathon Tier: Gold**
+
 A local-first autonomous AI agent that monitors multiple sources (filesystem, Gmail, WhatsApp), processes tasks through an Obsidian vault pipeline, and executes actions via MCP servers with human-in-the-loop safety gates. Built for the 2026 Personal AI Employee Hackathon.
 
 ## Tiers
