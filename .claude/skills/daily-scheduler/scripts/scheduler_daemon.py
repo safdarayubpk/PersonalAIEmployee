@@ -104,7 +104,7 @@ Execute the scheduled task as defined.
 def make_trigger_callback(job_config: dict, scheduler, vault_root: Path, log_file: Path):
     """Create a callback for a scheduled job trigger."""
     def callback():
-        job_id = job_config["id"]
+        job_id = job_config.get("id") or job_config.get("task_name", "unknown")
         description = job_config.get("description", job_id)
         priority = job_config.get("priority", "sensitive")
         tz = job_config.get("timezone", DEFAULT_TIMEZONE)
@@ -195,7 +195,7 @@ def add_job_to_config(config_path: Path, task_name: str, description: str,
 
     # Check for duplicate
     for job in config["jobs"]:
-        if job["id"] == task_name:
+        if (job.get("id") or job.get("task_name")) == task_name:
             print(f"Error: Job '{task_name}' already exists. Remove it first or use a different name.")
             sys.exit(1)
 
@@ -244,7 +244,8 @@ def list_jobs(config_path: Path) -> None:
             sched = f"daily {job.get('time', '09:00')}"
 
         enabled = "yes" if job.get("enabled", True) else "no"
-        print(f"{job['id']:<25} {sched:<25} {job.get('priority', 'sensitive'):<10} {enabled:<8} {job.get('description', '')}")
+        job_id = job.get("id") or job.get("task_name", "unknown")
+        print(f"{job_id:<25} {sched:<25} {job.get('priority', 'sensitive'):<10} {enabled:<8} {job.get('description', '')}")
 
     print(f"\nTotal: {len(jobs)} job(s)")
 
@@ -281,7 +282,7 @@ def run_daemon(config_path: Path, vault_root: Path) -> None:
     for job_config in jobs:
         trigger = build_trigger(job_config)
         callback = make_trigger_callback(job_config, scheduler, vault_root, log_file)
-        scheduler.add_job(callback, trigger, id=job_config["id"],
+        scheduler.add_job(callback, trigger, id=job_config.get("id") or job_config.get("task_name", "unknown"),
                           misfire_grace_time=MISFIRE_GRACE, coalesce=True)
 
     scheduler.start()

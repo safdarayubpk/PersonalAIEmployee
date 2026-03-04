@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  odoo-db:
+    image: postgres:16
+    container_name: fte_odoo_db
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo_secret
+      POSTGRES_DB: postgres
+    volumes:
+      - odoo_db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    restart: unless-stopped
+
+  odoo:
+    image: odoo:17.0
+    container_name: fte_odoo
+    depends_on:
+      - odoo-db
+    environment:
+      HOST: odoo-db
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo_secret
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - odoo_addons:/mnt/extra-addons
+    restart: unless-stopped
+
+volumes:
+  odoo_db_data:
+  odoo_data:
+  odoo_addons:
