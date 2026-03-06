@@ -1,11 +1,74 @@
 {
   "jobs": [
     {
+      "task_name": "morning-gmail-check",
+      "cron": "0 8 * * *",
+      "description": "Check Gmail for new important emails",
+      "action": "gmail.poll",
+      "priority": "routine",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "afternoon-gmail-check",
+      "cron": "0 14 * * *",
+      "description": "Afternoon Gmail check for missed emails",
+      "action": "gmail.poll",
+      "priority": "routine",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "evening-gmail-check",
+      "cron": "0 20 * * *",
+      "description": "Evening Gmail check before end of day",
+      "action": "gmail.poll",
+      "priority": "routine",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "morning-inbox-sweep",
+      "cron": "15 8 * * *",
+      "description": "Process all pending Needs_Action files",
+      "action": "orchestrator.process_all",
+      "priority": "sensitive",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "afternoon-inbox-sweep",
+      "cron": "15 14 * * *",
+      "description": "Afternoon sweep of pending tasks",
+      "action": "orchestrator.process_all",
+      "priority": "sensitive",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
       "task_name": "weekly-ceo-briefing",
-      "cron": "0 20 * * 0",
+      "cron": "0 9 * * 1",
       "description": "Generate Monday Morning CEO Briefing",
       "action": "docs.generate_briefing",
-      "priority": "medium",
+      "priority": "sensitive",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "weekly-social-summary",
+      "cron": "0 10 * * 1",
+      "description": "Generate weekly social media activity summary",
+      "action": "social.weekly_summary",
+      "priority": "routine",
+      "source": "daily-scheduler",
+      "enabled": true
+    },
+    {
+      "task_name": "daily-health-check",
+      "cron": "0 7 * * *",
+      "description": "Check health status of all external services",
+      "action": "health.check_all",
+      "priority": "routine",
       "source": "daily-scheduler",
       "enabled": true
     }
