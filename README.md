@@ -147,6 +147,7 @@ fte/
 
 ## Documentation
 
+- **[User Guide](docs/USER_GUIDE.md) — Complete setup and usage guide for beginners (START HERE)**
 - [Architecture](docs/architecture.md) — System diagrams and component descriptions
 - [Lessons Learned](docs/lessons-learned.md) — Development insights across tiers
 - [Demo Script](docs/demo-script.md) — 5-10 minute demo walkthrough
