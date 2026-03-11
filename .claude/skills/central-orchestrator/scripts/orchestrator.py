@@ -512,7 +512,7 @@ def main() -> None:
         "next_action": next_action,
     }
 
-    log_output = {k: v for k, v in output.items() if k != "status"}
+    log_output = {k: v for k, v in output.items() if k not in ("status", "run_id")}
     log_entry(log_file, component=COMPONENT, action="run_complete", status="success",
               run_id=run_id, **log_output,
               detail=f"Orchestrator run complete: {stats['processed']} processed, "
