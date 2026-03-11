@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Shared utilities for the AI Employee vault.
 
 Provides path validation, JSONL logging, frontmatter generation,
@@ -59,6 +61,14 @@ def validate_path(target: Path, vault_root: Path) -> Path:
     return resolved
 
 
+def _get_agent_field():
+    """Return the current FTE_ROLE value for log entries, or None if unset.
+
+    Does NOT raise on missing FTE_ROLE — logging should never crash the caller.
+    """
+    return os.environ.get("FTE_ROLE", "").strip().lower() or None
+
+
 def log_operation(log_file: Path, component: str, action: str, status: str,
                   detail: str, **extra) -> None:
     """Append one JSON line to a .jsonl log file.
@@ -78,6 +88,10 @@ def log_operation(log_file: Path, component: str, action: str, status: str,
         "status": status,
         "detail": detail,
     }
+    # Add agent field for Platinum tier traceability
+    agent = extra.pop("agent", None) or _get_agent_field()
+    if agent:
+        entry["agent"] = agent
     entry.update(extra)
 
     log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -101,6 +115,7 @@ def log_error(vault_root: Path, component: str, action: str, detail: str,
         traceback_str = traceback.format_exc()
 
     log_file = vault_root / "Logs" / "errors.jsonl"
+    agent = _get_agent_field()
     log_operation(
         log_file,
         component=component,
@@ -109,6 +124,7 @@ def log_error(vault_root: Path, component: str, action: str, detail: str,
         detail=detail,
         error=type(error).__name__,
         traceback=traceback_str,
+        **({"agent": agent} if agent else {}),
     )
 
 

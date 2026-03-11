@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """MCP Social Media Server — Facebook, Instagram, Twitter/X integration.
 
 Tools: social.post_facebook (sensitive), social.post_instagram (sensitive),
@@ -18,6 +20,7 @@ from base_server import (
     get_vault_path, is_dry_run,
     log_tool_call, create_pending_approval, make_response,
     get_circuit_breaker, check_service_available,
+    role_gated_action,
 )
 
 server = FastMCP("fte-social")
@@ -63,6 +66,18 @@ def social_post_facebook(content: str, link: str = "",
         approval_ref: Path to approved file in Approved/ folder
         correlation_id: Correlation ID for audit tracing
     """
+    params = {"content": content[:100] + "...", "link": link, "platform": "facebook"}
+
+    # Role gate — cloud agents cannot post (FR-008)
+    def _execute(_params):
+        return _facebook_post_impl(content, link, approval_ref, correlation_id)
+
+    return role_gated_action("social.post_facebook", "sensitive", params, _execute,
+                             correlation_id, domain="social")
+
+
+def _facebook_post_impl(content, link, approval_ref, correlation_id):
+    """Inner implementation of social_post_facebook, called after role gate passes."""
     # Validate content
     validation = _validate_content(content, "facebook")
     if validation:
@@ -154,6 +169,19 @@ def social_post_instagram(caption: str, image_url: str,
         approval_ref: Path to approved file in Approved/ folder
         correlation_id: Correlation ID for audit tracing
     """
+    params = {"caption": caption[:100] + "...", "image_url": image_url,
+              "platform": "instagram"}
+
+    # Role gate — cloud agents cannot post (FR-008)
+    def _execute(_params):
+        return _instagram_post_impl(caption, image_url, approval_ref, correlation_id)
+
+    return role_gated_action("social.post_instagram", "sensitive", params, _execute,
+                             correlation_id, domain="social")
+
+
+def _instagram_post_impl(caption, image_url, approval_ref, correlation_id):
+    """Inner implementation of social_post_instagram, called after role gate passes."""
     validation = _validate_content(caption, "instagram")
     if validation:
         log_tool_call("social", "social.post_instagram", "validation_error", "failure",
@@ -247,6 +275,18 @@ def social_post_twitter(content: str, approval_ref: str = "",
         approval_ref: Path to approved file in Approved/ folder
         correlation_id: Correlation ID for audit tracing
     """
+    params = {"content": content, "platform": "twitter", "char_count": len(content)}
+
+    # Role gate — cloud agents cannot tweet (FR-008)
+    def _execute(_params):
+        return _twitter_post_impl(content, approval_ref, correlation_id)
+
+    return role_gated_action("social.post_twitter", "sensitive", params, _execute,
+                             correlation_id, domain="social")
+
+
+def _twitter_post_impl(content, approval_ref, correlation_id):
+    """Inner implementation of social_post_twitter, called after role gate passes."""
     validation = _validate_content(content, "twitter")
     if validation:
         log_tool_call("social", "social.post_twitter", "validation_error", "failure",

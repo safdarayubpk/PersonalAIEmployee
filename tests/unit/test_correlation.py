@@ -14,10 +14,10 @@ from correlation import (
 
 
 def test_generate_format():
-    """Generated ID matches corr-YYYYMMDD-HHMMSS-XXXX format."""
+    """Generated ID matches corr-YYYY-MM-DD-XXXXXXXX Platinum format."""
     cid = generate_correlation_id()
     assert cid.startswith("corr-")
-    assert len(cid) == 25  # corr-YYYYMMDD-HHMMSS-XXXX
+    assert len(cid) == 24  # corr-YYYY-MM-DD-XXXXXXXX
     assert is_valid_correlation_id(cid)
 
 

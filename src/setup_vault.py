@@ -22,7 +22,7 @@ from vault_helpers import (
     log_operation,
 )
 
-# 7 required vault folders (FR-001)
+# Base vault folders (Bronze-Gold)
 VAULT_FOLDERS = [
     "Inbox",
     "Needs_Action",
@@ -32,6 +32,23 @@ VAULT_FOLDERS = [
     "Plans",
     "Logs",
     "Briefings",
+]
+
+# Additional Platinum-tier folders (FR-020, FR-021, FR-022)
+# Only created when FTE_ROLE is set (backward compat — FR-030)
+PLATINUM_FOLDERS = [
+    "Needs_Action/gmail",
+    "Needs_Action/whatsapp",
+    "Needs_Action/scheduler",
+    "Needs_Action/manual",
+    "In_Progress/cloud",
+    "In_Progress/local",
+    "Pending_Approval/gmail",
+    "Pending_Approval/social",
+    "Pending_Approval/odoo",
+    "Pending_Approval/general",
+    "Updates",
+    "Rejected",
 ]
 
 # Template directory relative to this script
@@ -53,7 +70,7 @@ def setup_vault() -> None:
         log_operation(log_file, "setup-vault", "create_folder", "success",
                       f"Created vault root: {vault_root}")
 
-    # Create 7 folders (FR-001)
+    # Create base folders (FR-001)
     for folder_name in VAULT_FOLDERS:
         folder_path = vault_root / folder_name
         if folder_path.exists():
@@ -64,6 +81,21 @@ def setup_vault() -> None:
             log_operation(log_file, "setup-vault", "create_folder", "success",
                           f"Created folder: {folder_name}/")
             folders_created += 1
+
+    # Create Platinum folders only if FTE_ROLE is set (FR-020, FR-021, FR-022, FR-030)
+    import os
+    fte_role = os.environ.get("FTE_ROLE", "").strip().lower()
+    if fte_role in ("cloud", "local"):
+        for folder_name in PLATINUM_FOLDERS:
+            folder_path = vault_root / folder_name
+            if folder_path.exists():
+                log_operation(log_file, "setup-vault", "create_folder", "skipped",
+                              f"Platinum folder already exists: {folder_name}/")
+            else:
+                folder_path.mkdir(parents=True, exist_ok=True)
+                log_operation(log_file, "setup-vault", "create_folder", "success",
+                              f"Created Platinum folder: {folder_name}/")
+                folders_created += 1
 
     # Create Dashboard.md (FR-002)
     dashboard_path = vault_root / "Dashboard.md"

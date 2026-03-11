@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 """Shared MCP server utilities for HITL classification, dry-run, and JSONL logging.
 
 All Gold tier MCP servers import from this module for consistent behavior.
+Platinum tier adds role_gated_action() for FTE_ROLE enforcement.
 """
 
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from role_gate import get_fte_role, enforce_role_gate, RoleViolationError
 
 # HITL levels
 HITL_ROUTINE = "routine"
@@ -32,6 +39,49 @@ def is_live_mode() -> bool:
     return not is_dry_run()
 
 
+def role_gated_action(tool: str, risk_level: str, params: dict,
+                      execute_fn, correlation_id: str | None = None,
+                      domain: str = "general") -> dict:
+    """Execute an action with FTE_ROLE gating (FR-006, FR-008).
+
+    When FTE_ROLE=cloud and risk is sensitive/critical: creates draft in
+    Pending_Approval/<domain>/ and returns draft_created response.
+    When FTE_ROLE=local: proceeds through existing HITL flow via execute_fn.
+
+    Args:
+        tool: Tool name (e.g., 'email_send').
+        risk_level: One of 'routine', 'sensitive', 'critical'.
+        params: Action parameters.
+        execute_fn: Callable to execute when permitted.
+        correlation_id: Optional correlation ID for tracing.
+        domain: Domain subfolder for Pending_Approval (e.g., 'gmail', 'social').
+
+    Returns:
+        Response dict with status and details.
+    """
+    try:
+        enforce_role_gate(tool, risk_level)
+    except RoleViolationError:
+        # Cloud agent: create draft in Pending_Approval/<domain>/
+        role = get_fte_role()
+        filepath = create_pending_approval(
+            tool, params, correlation_id=correlation_id, domain=domain, agent=role
+        )
+        log_tool_call(
+            domain, tool, "draft_created", "success",
+            f"Cloud agent drafted to Pending_Approval/{domain}/",
+            correlation_id=correlation_id, params=params,
+        )
+        return make_response(
+            "draft_created", tool, correlation_id=correlation_id,
+            detail=f"Action blocked (FTE_ROLE=cloud). Draft created at: {filepath}",
+            pending_approval_path=filepath,
+        )
+
+    # Role permits execution — proceed through HITL flow
+    return execute_fn(params)
+
+
 def log_tool_call(domain: str, tool: str, action: str, status: str,
                   detail: str, correlation_id: str | None = None,
                   params: dict | None = None, result: dict | None = None) -> None:
@@ -43,6 +93,7 @@ def log_tool_call(domain: str, tool: str, action: str, status: str,
     log_file = vault / "Logs" / f"mcp_{domain}.jsonl"
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
+    role = os.environ.get("FTE_ROLE", "")
     entry = {
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
         "component": f"fte-{domain}",
@@ -53,6 +104,8 @@ def log_tool_call(domain: str, tool: str, action: str, status: str,
         "params": _redact_sensitive(params or {}),
         "detail": detail,
     }
+    if role:
+        entry["agent"] = role
     if result is not None:
         entry["result"] = result
 
@@ -84,13 +137,22 @@ def log_critical_action(tool: str, action: str, status: str,
 
 
 def create_pending_approval(tool: str, params: dict,
-                            correlation_id: str | None = None) -> str:
+                            correlation_id: str | None = None,
+                            domain: str = "general",
+                            agent: str | None = None) -> str:
     """Create a Pending_Approval file for HITL-gated actions.
+
+    Args:
+        tool: Tool name.
+        params: Action parameters.
+        correlation_id: Optional correlation ID.
+        domain: Subfolder under Pending_Approval/ (e.g., 'gmail', 'social').
+        agent: Agent role that created this ('cloud' or 'local').
 
     Returns the path to the created file.
     """
     vault = get_vault_path()
-    pending_dir = vault / "Pending_Approval"
+    pending_dir = vault / "Pending_Approval" / domain
     pending_dir.mkdir(parents=True, exist_ok=True)
 
     ts = datetime.now(timezone.utc)
@@ -101,13 +163,16 @@ def create_pending_approval(tool: str, params: dict,
     filename = f"pending-{slug}-{ts_file}.md"
     filepath = pending_dir / filename
 
+    role = agent or os.environ.get("FTE_ROLE", "")
     content = f"""---
 title: "Pending Approval: {tool}"
 created: "{ts_str}"
+tier: platinum
 type: pending-approval
 tool: {tool}
 status: pending_approval
 correlation_id: "{correlation_id or ''}"
+agent: {role}
 ---
 
 ## Action Requiring Approval

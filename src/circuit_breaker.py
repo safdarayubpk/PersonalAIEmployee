@@ -41,6 +41,7 @@ class CircuitBreaker:
             "last_success": None,
             "last_failure": None,
             "last_error": None,
+            "agent": os.environ.get("FTE_ROLE", "unknown"),
         }
         if self.health_file.exists():
             try:
@@ -108,6 +109,7 @@ class CircuitBreaker:
         self._state["last_success"] = _now_iso()
         self._state["cooldown_expires_at"] = None
         self._state["last_error"] = None
+        self._state["agent"] = os.environ.get("FTE_ROLE", "unknown")
         self._save_state()
 
     def record_failure(self, error_message: str = "",
@@ -124,6 +126,7 @@ class CircuitBreaker:
         self._state["consecutive_failures"] += 1
         self._state["last_failure"] = _now_iso()
         self._state["last_error"] = error_message[:200] if error_message else None
+        self._state["agent"] = os.environ.get("FTE_ROLE", "unknown")
 
         if non_retryable or self._state["consecutive_failures"] >= self.failure_threshold:
             new_state = "down" if non_retryable else "degraded"

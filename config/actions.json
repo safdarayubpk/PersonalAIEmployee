@@ -4,6 +4,8 @@
       "action_id": "email.send_email",
       "description": "Send an email via Gmail API (requires OAuth2 credentials)",
       "hitl_required": true,
+      "risk_level": "sensitive",
+      "fte_role_minimum": "local",
       "module": "actions.email",
       "function": "send_email"
     },
@@ -11,6 +13,8 @@
       "action_id": "email.draft_email",
       "description": "Create a local email draft as markdown in vault Plans/",
       "hitl_required": false,
+      "risk_level": "routine",
+      "fte_role_minimum": "cloud",
       "module": "actions.email",
       "function": "draft_email"
     },
@@ -18,6 +22,8 @@
       "action_id": "social.post_social",
       "description": "Post content to social media platforms",
       "hitl_required": true,
+      "risk_level": "sensitive",
+      "fte_role_minimum": "local",
       "module": "actions.social",
       "function": "post_social"
     },
@@ -25,6 +31,8 @@
       "action_id": "calendar.create_event",
       "description": "Create a calendar event",
       "hitl_required": true,
+      "risk_level": "sensitive",
+      "fte_role_minimum": "local",
       "module": "actions.calendar_actions",
       "function": "create_event"
     },
@@ -32,6 +40,8 @@
       "action_id": "calendar.list_events",
       "description": "List upcoming calendar events",
       "hitl_required": false,
+      "risk_level": "routine",
+      "fte_role_minimum": "cloud",
       "module": "actions.calendar_actions",
       "function": "list_events"
     },
@@ -39,6 +49,8 @@
       "action_id": "documents.generate_report",
       "description": "Generate a markdown report in vault Plans/",
       "hitl_required": false,
+      "risk_level": "routine",
+      "fte_role_minimum": "cloud",
       "module": "actions.documents",
       "function": "generate_report"
     }

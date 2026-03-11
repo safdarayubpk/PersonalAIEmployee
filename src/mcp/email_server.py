@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """MCP Email Server — wraps src/actions/email.py for Claude Code tool access.
 
 Tools: email.send (sensitive), email.draft (routine), email.search (routine)
@@ -17,6 +19,7 @@ from base_server import (
     get_vault_path, is_dry_run, is_live_mode,
     log_tool_call, create_pending_approval, make_response,
     get_circuit_breaker, check_service_available,
+    role_gated_action,
 )
 
 server = FastMCP("fte-email")
@@ -66,6 +69,16 @@ def email_send(to: str, subject: str, body: str,
     """
     params = {"to": to, "subject": subject, "body": body, "cc": cc}
 
+    # Role gate — cloud agents cannot send email (FR-008)
+    def _execute(_params):
+        return _email_send_impl(to, subject, body, cc, approval_ref, correlation_id, params)
+
+    return role_gated_action("email.send", "sensitive", params, _execute,
+                             correlation_id, domain="email")
+
+
+def _email_send_impl(to, subject, body, cc, approval_ref, correlation_id, params):
+    """Inner implementation of email_send, called after role gate passes."""
     # Dry-run check
     if is_dry_run():
         log_tool_call("email", "email.send", "dry_run", "success",

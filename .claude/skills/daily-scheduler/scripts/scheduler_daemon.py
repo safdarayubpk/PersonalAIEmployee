@@ -36,6 +36,7 @@ PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT",
                     Path(__file__).resolve().parent.parent.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from vault_helpers import redact_sensitive, generate_correlation_id
+from role_gate import get_fte_role, validate_startup
 
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "schedules.json"
 DEFAULT_TIMEZONE = "Asia/Karachi"
@@ -54,21 +55,31 @@ def log_entry(log_file: Path, **fields) -> None:
 def create_needs_action(job_id: str, description: str, priority: str,
                         schedule_str: str, tz: str, next_run: str,
                         vault_root: Path) -> str:
-    """Create a Needs_Action .md file for a triggered scheduled task."""
+    """Create a Needs_Action/scheduler/ .md file for a triggered scheduled task."""
     ts = datetime.now(timezone.utc)
     ts_str = ts.strftime("%Y-%m-%dT%H:%M:%S")
     ts_filename = ts.strftime("%Y%m%d-%H%M%S")
 
     filename = f"scheduled-{job_id}-{ts_filename}.md"
-    filepath = vault_root / "Needs_Action" / filename
+    # Write to domain subfolder Needs_Action/scheduler/ (Platinum tier)
+    filepath = vault_root / "Needs_Action" / "scheduler" / filename
 
     corr_id = generate_correlation_id()
+
+    # Detect agent role for frontmatter
+    try:
+        agent = get_fte_role()
+    except SystemExit:
+        agent = ""
+
+    tier = "platinum" if agent else "silver"
 
     content = f"""---
 title: "scheduled-{job_id}"
 created: "{ts_str}"
-tier: silver
+tier: {tier}
 source: daily-scheduler
+agent: {agent}
 priority: "{priority}"
 status: needs_action
 type: scheduled
@@ -252,6 +263,13 @@ def list_jobs(config_path: Path) -> None:
 
 def run_daemon(config_path: Path, vault_root: Path) -> None:
     """Start the scheduler daemon."""
+    # Validate FTE_ROLE on startup (Platinum tier)
+    try:
+        role = validate_startup()
+        print(f"Scheduler daemon starting as FTE_ROLE={role}")
+    except SystemExit:
+        role = ""  # Gold backward compat
+
     log_file = vault_root / "Logs" / "scheduler.jsonl"
     pid_file = vault_root / "Logs" / "scheduler.pid"
 

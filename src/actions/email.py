@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Email actions using Gmail API with OAuth2.
 
 Reuses the same OAuth2 credentials as gmail-watcher (credentials.json / token.json).
@@ -117,6 +119,10 @@ def send_email(to: str, subject: str, body: str,
     Returns:
         dict with status, message_id, to, subject
     """
+    # Defense-in-depth role gate (FR-008) — MCP layer also checks
+    from role_gate import enforce_role_gate
+    enforce_role_gate("email_send", "sensitive")
+
     service = _get_gmail_service()
     mime_msg = _build_mime(to, subject, body, cc, bcc, is_html, attachments)
 

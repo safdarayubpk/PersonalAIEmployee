@@ -13,6 +13,7 @@ module.exports = {
       out_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/watcher-pm2-out.log",
       error_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/watcher-pm2-error.log",
       env: {
+        FTE_ROLE: "local",
         VAULT_PATH: "/home/safdarayub/Documents/AI_Employee_Vault",
         DROP_FOLDER: "/home/safdarayub/Desktop/DropForAI",
       },
@@ -31,6 +32,7 @@ module.exports = {
       out_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/gmail-pm2-out.log",
       error_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/gmail-pm2-error.log",
       env: {
+        FTE_ROLE: "local",
         VAULT_PATH: "/home/safdarayub/Documents/AI_Employee_Vault",
         PROJECT_ROOT: __dirname + "/..",
       },
@@ -49,6 +51,7 @@ module.exports = {
       out_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/whatsapp-pm2-out.log",
       error_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/whatsapp-pm2-error.log",
       env: {
+        FTE_ROLE: "local",
         VAULT_PATH: "/home/safdarayub/Documents/AI_Employee_Vault",
         PROJECT_ROOT: __dirname + "/..",
       },
@@ -66,6 +69,7 @@ module.exports = {
       out_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/scheduler-pm2-out.log",
       error_file: "/home/safdarayub/Documents/AI_Employee_Vault/Logs/scheduler-pm2-error.log",
       env: {
+        FTE_ROLE: "local",
         VAULT_PATH: "/home/safdarayub/Documents/AI_Employee_Vault",
         PROJECT_ROOT: __dirname + "/..",
       },

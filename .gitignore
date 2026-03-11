@@ -22,11 +22,15 @@ Thumbs.db
 *.tmp
 *.swp
 
-# Credentials (C-010: never commit secrets)
+# Credentials & Secrets (Constitution Section: Security, FR-014)
 credentials.json
 token.json
 *.key
 *.pem
+*.session
+*.token
+credentials/
+secrets/
 
 # Logs (kept in vault, not repo)
 *.log

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """MCP Odoo ERP Server — JSON-RPC bridge to Odoo 19 Community via odoorpc.
 
 Tools: odoo.list_invoices (routine), odoo.create_invoice (critical),
@@ -19,6 +21,7 @@ from base_server import (
     log_tool_call, log_critical_action,
     create_pending_approval, make_response,
     get_circuit_breaker, check_service_available,
+    role_gated_action,
 )
 
 server = FastMCP("fte-odoo")
@@ -123,6 +126,18 @@ def odoo_create_invoice(partner_id: int, lines: list,
     """
     params = {"partner_id": partner_id, "lines": lines, "invoice_date": invoice_date}
 
+    # Role gate — cloud agents cannot create invoices (FR-008, critical)
+    def _execute(_params):
+        return _create_invoice_impl(partner_id, lines, invoice_date, approval_ref,
+                                    correlation_id, params)
+
+    return role_gated_action("odoo.create_invoice", "critical", params, _execute,
+                             correlation_id, domain="odoo")
+
+
+def _create_invoice_impl(partner_id, lines, invoice_date, approval_ref,
+                          correlation_id, params):
+    """Inner implementation of odoo_create_invoice, called after role gate passes."""
     if is_dry_run():
         total = sum(l.get("quantity", 0) * l.get("price_unit", 0) for l in lines)
         log_tool_call("odoo", "odoo.create_invoice", "dry_run", "success",
@@ -200,6 +215,18 @@ def odoo_register_payment(invoice_id: int, amount: float,
     """
     params = {"invoice_id": invoice_id, "amount": amount, "payment_date": payment_date}
 
+    # Role gate — cloud agents cannot register payments (FR-008, critical)
+    def _execute(_params):
+        return _register_payment_impl(invoice_id, amount, payment_date, approval_ref,
+                                      correlation_id, params)
+
+    return role_gated_action("odoo.register_payment", "critical", params, _execute,
+                             correlation_id, domain="odoo")
+
+
+def _register_payment_impl(invoice_id, amount, payment_date, approval_ref,
+                            correlation_id, params):
+    """Inner implementation of odoo_register_payment, called after role gate passes."""
     if is_dry_run():
         log_tool_call("odoo", "odoo.register_payment", "dry_run", "success",
                       f"Would register payment of {amount} on invoice {invoice_id}",

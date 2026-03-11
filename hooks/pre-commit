@@ -1,0 +1,83 @@
+#!/bin/bash
+# Platinum tier: Defense-in-depth secrets isolation (ADR-0012, FR-015)
+#
+# This pre-commit hook validates that no staged file matches the secrets
+# exclusion patterns. Works independently of .gitignore — even if .gitignore
+# is modified or 'git add -f' is used, this hook blocks the commit.
+#
+# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+# Hardcoded exclusion patterns (independent of .gitignore)
+BLOCKED_PATTERNS=(
+    ".env"
+    "*.session"
+    "*.token"
+    "*.key"
+    "*.pem"
+    "credentials/"
+    "secrets/"
+    "credentials.json"
+    "token.json"
+)
+
+VIOLATIONS=0
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
+
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+for FILE in $STAGED_FILES; do
+    BASENAME=$(basename "$FILE")
+    DIRNAME=$(dirname "$FILE")
+
+    for PATTERN in "${BLOCKED_PATTERNS[@]}"; do
+        MATCHED=0
+
+        # Check exact filename match (e.g., .env, credentials.json)
+        if [ "$BASENAME" = "$PATTERN" ]; then
+            MATCHED=1
+        fi
+
+        # Check glob pattern match (e.g., *.session, *.token)
+        case "$PATTERN" in
+            \*.*)
+                EXT="${PATTERN#\*}"
+                case "$BASENAME" in
+                    *"$EXT") MATCHED=1 ;;
+                esac
+                ;;
+        esac
+
+        # Check directory pattern (e.g., credentials/, secrets/)
+        case "$PATTERN" in
+            */)
+                DIR_NAME="${PATTERN%/}"
+                case "$FILE" in
+                    "$DIR_NAME/"*) MATCHED=1 ;;
+                    *"/$DIR_NAME/"*) MATCHED=1 ;;
+                esac
+                ;;
+        esac
+
+        if [ "$MATCHED" -eq 1 ]; then
+            echo "BLOCKED: $FILE matches secrets exclusion pattern '$PATTERN'"
+            VIOLATIONS=$((VIOLATIONS + 1))
+            break
+        fi
+    done
+done
+
+if [ "$VIOLATIONS" -gt 0 ]; then
+    echo ""
+    echo "ERROR: $VIOLATIONS file(s) match secrets exclusion patterns."
+    echo "These files MUST NOT be committed to git (Constitution Section: Security)."
+    echo "Remove them from staging with: git reset HEAD <file>"
+    exit 1
+fi
+
+exit 0

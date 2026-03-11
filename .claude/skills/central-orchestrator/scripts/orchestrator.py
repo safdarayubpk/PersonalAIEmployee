@@ -36,6 +36,9 @@ PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT",
                     Path(__file__).resolve().parent.parent.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from vault_helpers import redact_sensitive, generate_correlation_id
+from role_gate import get_fte_role, validate_startup
+from claim_move import claim_file, complete_file
+from dashboard_merger import write_update
 
 RISK_KEYWORDS_PATH = PROJECT_ROOT / "config" / "risk-keywords.json"
 
@@ -90,13 +93,14 @@ def parse_frontmatter(content: str) -> dict:
 
 
 def scan_needs_action(vault_root: Path, source_filter: str | None) -> list[dict]:
-    """Scan Needs_Action/ for pending .md files."""
+    """Scan Needs_Action/ and Needs_Action/<domain>/ for pending .md files."""
     needs_action = vault_root / "Needs_Action"
     if not needs_action.exists():
         return []
 
     files = []
-    for path in sorted(needs_action.glob("*.md")):
+    # Scan both root and subdomain folders (Platinum tier)
+    for path in sorted(needs_action.glob("**/*.md")):
         if path.name.endswith(".moved"):
             continue
 
@@ -325,8 +329,23 @@ def update_dashboard(vault_root: Path, stats: dict) -> None:
 
 
 def process_file(file_info: dict, vault_root: Path, log_file: Path) -> dict:
-    """Triage and route a single Needs_Action file."""
-    mark_status(file_info["path"], "processing")
+    """Triage and route a single Needs_Action file with claim-by-move."""
+    # Determine current agent role
+    try:
+        role = get_fte_role()
+    except SystemExit:
+        role = "local"  # Gold backward compat
+
+    # Claim-by-move: atomically claim file before processing (T027/T028)
+    claimed_path = claim_file(file_info["path"], role, vault_root)
+    if claimed_path is None:
+        log_entry(log_file, component=COMPONENT, action="claim_failed", status="skipped",
+                  file=file_info["filename"],
+                  detail=f"File already claimed by another agent, skipping")
+        return {"route": "skipped", "risk_level": "unknown", "mcp": None}
+
+    # Update file_info path to claimed location
+    file_info["path"] = claimed_path
 
     risk_level, matched = assess_risk(file_info["content"])
 
@@ -337,21 +356,20 @@ def process_file(file_info: dict, vault_root: Path, log_file: Path) -> dict:
 
     if risk_level == "high":
         route = "pending_approval"
-        route_to_pending(file_info, risk_level, matched, vault_root)
+        # Use complete_file to move from In_Progress to Pending_Approval (T029)
+        complete_file(claimed_path, "Pending_Approval", vault_root, status="pending_approval")
 
     elif risk_level == "medium":
-        # Medium risk: attempt action, but always route to pending approval
         mcp_result = attempt_action(file_info, vault_root)
-        route_to_pending(file_info, risk_level, matched, vault_root)
+        complete_file(claimed_path, "Pending_Approval", vault_root, status="pending_approval")
         if mcp_result.get("attempted"):
             route = "pending_approval_with_action"
         else:
             route = "pending_approval"
 
     else:
-        # Low risk: attempt action if applicable, then route to done
         mcp_result = attempt_action(file_info, vault_root)
-        route_to_done(file_info, vault_root)
+        complete_file(claimed_path, "Done", vault_root, status="completed")
         if mcp_result.get("attempted"):
             route = "done_with_action"
         else:
@@ -361,9 +379,19 @@ def process_file(file_info: dict, vault_root: Path, log_file: Path) -> dict:
               file=file_info["filename"], source=file_info["source"],
               priority=file_info["priority"], risk_level=risk_level,
               route=route, matched_keywords=matched,
-              mcp=mcp_result,
+              mcp=mcp_result, agent=role,
               correlation_id=file_info.get("correlation_id", ""),
               detail=f"Routed {file_info['filename']} to {route}")
+
+    # T031: Cloud agent writes incremental dashboard update after processing (FR-012)
+    if role == "cloud":
+        try:
+            summary = (f"Processed `{file_info['filename']}` — "
+                       f"route: {route}, risk: {risk_level}, source: {file_info['source']}")
+            write_update(summary, vault_root, source=COMPONENT,
+                         correlation_id=file_info.get("correlation_id", ""))
+        except Exception:
+            pass  # Non-critical — don't fail processing on dashboard update error
 
     return {"route": route, "risk_level": risk_level, "mcp": mcp_result}
 

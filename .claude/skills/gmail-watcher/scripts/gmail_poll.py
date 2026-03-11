@@ -38,6 +38,7 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", SKILL_DIR.parent.parent.parent))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from vault_helpers import redact_sensitive, generate_correlation_id
+from role_gate import get_fte_role, is_cloud, validate_startup
 
 CREDENTIALS_FILE = PROJECT_ROOT / "credentials.json"
 TOKEN_FILE = PROJECT_ROOT / "token.json"
@@ -79,7 +80,11 @@ SKIP_SENDERS = ["noreply@", "no-reply@", "notifications@", "mailer-daemon@"]
 
 def authenticate(live: bool) -> object:
     """Authenticate with Gmail API via OAuth2."""
-    scopes = SCOPES_MODIFY if live else SCOPES_READONLY
+    # Cloud agents always use readonly scopes (FR-008)
+    if is_cloud():
+        scopes = SCOPES_READONLY
+    else:
+        scopes = SCOPES_MODIFY if live else SCOPES_READONLY
     creds = None
 
     if TOKEN_FILE.exists():
@@ -91,12 +96,20 @@ def authenticate(live: bool) -> object:
                 creds.refresh(Request())
             except Exception as e:
                 print(f"Token refresh failed: {e}")
+                # Cloud agent: create manual alert for token refresh failure (FR-017)
+                if is_cloud():
+                    _create_token_refresh_alert(str(e))
+                    sys.exit(1)
                 print("Attempting re-authentication...")
                 creds = None
         if creds is None:
             if not CREDENTIALS_FILE.exists():
                 print(f"Error: {CREDENTIALS_FILE} not found.")
                 print("See references/gmail_api_setup.md for setup instructions.")
+                sys.exit(1)
+            if is_cloud():
+                # Cloud cannot do interactive auth
+                _create_token_refresh_alert("credentials.json present but token.json missing/expired")
                 sys.exit(1)
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_FILE), scopes)
@@ -180,25 +193,35 @@ def slugify(text: str, max_len: int = 30) -> str:
 
 
 def create_needs_action(email: dict, urgency: str, vault_root: Path) -> str:
-    """Create a Needs_Action .md file for an important email."""
+    """Create a Needs_Action/gmail/ .md file for an important email."""
     ts = datetime.now(timezone.utc)
     ts_str = ts.strftime("%Y-%m-%dT%H:%M:%S")
     ts_filename = ts.strftime("%Y%m%d-%H%M%S")
 
     sender_slug = slugify(email["sender"].split("@")[0].split("<")[-1])
     filename = f"email-{sender_slug}-{ts_filename}.md"
-    filepath = vault_root / "Needs_Action" / filename
+    # Write to domain subfolder Needs_Action/gmail/ (Platinum tier)
+    filepath = vault_root / "Needs_Action" / "gmail" / filename
 
     subject_slug = slugify(email["subject"])
     attachments_str = ", ".join(email["attachments"]) if email["attachments"] else "none"
 
     corr_id = generate_correlation_id()
 
+    # Detect agent role for frontmatter
+    try:
+        agent = get_fte_role()
+    except SystemExit:
+        agent = ""
+
+    tier = "platinum" if agent else "silver"
+
     content = f"""---
 title: "email-{sender_slug}-{subject_slug}"
 created: "{ts_str}"
-tier: silver
+tier: {tier}
 source: gmail-watcher
+agent: {agent}
 priority: "{urgency}"
 status: needs_action
 gmail_id: "{email['id']}"
@@ -232,6 +255,51 @@ Review and respond to this email.
     os.rename(tmp_path, filepath)
 
     return filename
+
+
+def _create_token_refresh_alert(error_detail: str) -> None:
+    """Create a Needs_Action/manual/ alert for token refresh failure (FR-017)."""
+    vault_path = os.environ.get("VAULT_PATH", DEFAULT_VAULT_PATH)
+    vault_root = Path(vault_path)
+    alert_dir = vault_root / "Needs_Action" / "manual"
+    alert_dir.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.now(timezone.utc)
+    ts_str = ts.strftime("%Y-%m-%dT%H:%M:%S")
+    ts_file = ts.strftime("%Y%m%d-%H%M%S")
+    corr_id = generate_correlation_id()
+
+    content = f"""---
+title: "gmail-token-refresh-failure"
+created: "{ts_str}"
+tier: platinum
+source: gmail-watcher
+agent: cloud
+priority: "critical"
+status: needs_action
+correlation_id: "{corr_id}"
+---
+
+## What happened
+
+Gmail OAuth2 token refresh failed on cloud agent. Manual intervention required.
+
+## Error
+
+{error_detail}
+
+## Suggested action
+
+1. On local machine, re-authenticate Gmail: `python3 src/actions/email.py`
+2. Copy refreshed token.json to cloud VM
+3. Restart cloud-gmail-watcher: `pm2 restart cloud-gmail-watcher`
+"""
+
+    filepath = alert_dir / f"gmail-token-failure-{ts_file}.md"
+    tmp = filepath.with_suffix(filepath.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.rename(tmp, filepath)
+    print(f"Created manual alert: {filepath}")
 
 
 def log_entry(log_file: Path, **fields) -> None:
@@ -313,7 +381,8 @@ def poll_once(service, args, vault_root: Path, log_file: Path,
         filename = create_needs_action(email, urgency, vault_root)
         created += 1
 
-        if args.live:
+        # Cloud agents never modify Gmail state (FR-008)
+        if args.live and not is_cloud():
             mark_as_read(service, email["id"])
 
         log_entry(log_file, component=COMPONENT, action="poll_email", status="success",
@@ -330,6 +399,14 @@ def poll_once(service, args, vault_root: Path, log_file: Path,
 
 def main() -> None:
     args = parse_args()
+
+    # Validate FTE_ROLE on startup (Platinum tier)
+    try:
+        role = validate_startup()
+        print(f"Gmail Watcher starting as FTE_ROLE={role}")
+    except SystemExit:
+        # FTE_ROLE not set — backward compat with Gold tier
+        role = ""
 
     vault_path = args.vault_path or os.environ.get("VAULT_PATH", DEFAULT_VAULT_PATH)
     vault_root = Path(vault_path)

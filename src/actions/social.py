@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Social media actions (stub).
 
 Silver tier stub — returns simulated results.
@@ -18,6 +20,10 @@ def post_social(platform: str = "twitter", content: str = "",
     Returns:
         dict with status, action, platform, detail
     """
+    # Defense-in-depth role gate (FR-008)
+    from role_gate import enforce_role_gate
+    enforce_role_gate("social_post", "sensitive")
+
     return {
         "status": "stub",
         "action": "post_social",
