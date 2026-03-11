@@ -1,2 +1,4 @@
 {"timestamp": "2026-03-11T22:59:54", "component": "git-sync", "action": "secrets_audit", "status": "failure", "detail": "CRITICAL SECURITY: Secrets-matching files detected on cloud VM:\n  - .env", "agent": "cloud"}
 {"timestamp": "2026-03-11T22:59:57", "component": "git-sync", "action": "pull", "status": "success", "detail": "Pull --rebase successful", "agent": "cloud", "files_changed": 0, "retry_count": 0}
+{"timestamp": "2026-03-11T23:01:02", "component": "git-sync", "action": "pull", "status": "success", "detail": "Pull --rebase successful", "agent": "cloud", "files_changed": 0, "retry_count": 0}
+{"timestamp": "2026-03-11T23:01:02", "component": "git-sync", "action": "stash_pop", "status": "failure", "detail": "error: Your local changes to the following files would be overwritten by merge:\n\tLogs/sync.jsonl\nPlease commit your changes or stash them before you merge.\nAborting", "agent": "cloud", "files_changed": 0, "retry_count": 0}

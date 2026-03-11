@@ -1,0 +1,2 @@
+{"timestamp": "2026-03-11T23:00:04", "component": "claim-move", "action": "claim", "status": "success", "detail": "Claimed: secrets-detected-on-cloud-2026-03-11T22-59-54.md \u2192 In_Progress/cloud/", "agent": "cloud", "correlation_id": ""}
+{"timestamp": "2026-03-11T23:00:04", "component": "claim-move", "action": "complete", "status": "success", "detail": "Completed: secrets-detected-on-cloud-2026-03-11T22-59-54.md \u2192 Pending_Approval/", "agent": "cloud", "correlation_id": ""}
