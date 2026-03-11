@@ -1,0 +1,1 @@
+{"timestamp": "2026-03-11T22:59:56", "component": "gmail-watcher", "action": "startup", "status": "success", "detail": "Daemon started, poll every 120s", "dry_run": true}

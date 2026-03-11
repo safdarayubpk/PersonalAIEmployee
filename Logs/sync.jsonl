@@ -1,0 +1,2 @@
+{"timestamp": "2026-03-11T22:59:54", "component": "git-sync", "action": "secrets_audit", "status": "failure", "detail": "CRITICAL SECURITY: Secrets-matching files detected on cloud VM:\n  - .env", "agent": "cloud"}
+{"timestamp": "2026-03-11T22:59:57", "component": "git-sync", "action": "pull", "status": "success", "detail": "Pull --rebase successful", "agent": "cloud", "files_changed": 0, "retry_count": 0}
