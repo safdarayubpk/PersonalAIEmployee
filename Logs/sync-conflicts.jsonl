@@ -1,0 +1,1 @@
+{"timestamp": "2026-03-12T01:00:29", "component": "git-sync", "action": "rebase_conflict", "status": "failure", "detail": "Git rebase conflict: error: cannot pull with rebase: You have unstaged changes.\nerror: Please commit or stash them.", "agent": "cloud"}
