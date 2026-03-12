@@ -5,7 +5,7 @@ tier: platinum
 source: gmail-watcher
 agent: cloud
 priority: "sensitive"
-status: needs_action
+status: in_progress
 gmail_id: "19ce2627e9e5903c"
 correlation_id: "corr-2026-03-12-58e0131c"
 ---
