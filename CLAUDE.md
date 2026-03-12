@@ -215,6 +215,8 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Python 3.13+ (existing venv) (002-silver-tier)
 - Filesystem — Obsidian vault at `VAULT_PATH` (default `/home/safdarayub/Documents/AI_Employee_Vault`), JSONL logs, JSON config files (002-silver-tier)
 - Filesystem — Obsidian vault at `VAULT_PATH`, JSONL logs, JSON config files, `Logs/health.json` (circuit breaker state) (003-gold-tier)
+- Python 3.13+ (local), Python 3.12.3 (cloud VM) + watchdog, PyYAML, google-api-python-client, apscheduler, FastMCP, odoorpc, PM2 (process manager), Git (004-platinum-tier)
+- Obsidian vault (filesystem — markdown + YAML frontmatter + JSONL logs), private GitHub repo for sync (004-platinum-tier)
 
 ## Recent Changes
 - 001-bronze-tier: Added Python 3.13+ + watchdog (filesystem events), PyYAML (frontmatter parsing), pathlib (path operations), json (JSONL logging), datetime (ISO 8601 timestamps), signal/os (PID lock management)
