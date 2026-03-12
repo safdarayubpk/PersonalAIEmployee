@@ -1,8 +1,8 @@
 # Personal AI Employee
 
-**Hackathon Tier: Gold**
+**Hackathon Tier: Platinum**
 
-A local-first autonomous AI agent that monitors multiple sources (filesystem, Gmail, WhatsApp), processes tasks through an Obsidian vault pipeline, and executes actions via MCP servers with human-in-the-loop safety gates. Built for the 2026 Personal AI Employee Hackathon.
+A hybrid cloud-local autonomous AI agent that monitors multiple sources (filesystem, Gmail, WhatsApp), processes tasks through a git-synced Obsidian vault pipeline, and executes actions via MCP servers with human-in-the-loop safety gates. The cloud VM (Ubuntu 24.04) works 24/7 even when your laptop is off — detecting events, drafting responses, and queueing approval requests. When you come back online, review and approve with a single file move. Built for the 2026 Personal AI Employee Hackathon.
 
 ## Tiers
 
@@ -29,6 +29,19 @@ A local-first autonomous AI agent that monitors multiple sources (filesystem, Gm
 - Correlation IDs: `corr-YYYYMMDD-HHMMSS-XXXX` from watcher through execution
 - CEO Briefing: weekly aggregation from Odoo + tasks + social + bottlenecks
 - Health monitoring: `Logs/health.json` with real-time service states
+
+### Platinum — Hybrid Cloud-Local with Offline Tolerance
+- **Cloud VM** (Ubuntu 24.04 at 141.145.146.17): runs 24/7, detects events, drafts responses
+- **Local laptop**: reviews, approves, executes real actions (email send, social post, payments)
+- `FTE_ROLE` environment variable: `cloud` (draft-only) vs `local` (full execution)
+- Git-based vault sync: 60-second pull/commit/push cycle via `src/git_sync.py`
+- Claim-by-move concurrency: atomic `os.rename()` prevents duplicate processing
+- Single-writer dashboard: cloud writes to `Updates/`, local merges into `Dashboard.md`
+- Secrets isolation: `.gitignore` + pre-commit hook + cloud-side audit (3 layers)
+- Correlation ID propagation: `corr-YYYY-MM-DD-XXXXXXXX` traces full lifecycle across agents
+- Stale detection: flags Pending_Approval >48h, Rejected >7d
+- PM2 daemon management: 4 services (git-sync, gmail-watcher, scheduler, orchestrator)
+- **Live demo verified**: real email detected → drafted → approved → sent via Gmail API
 
 ## Prerequisites
 
@@ -90,6 +103,13 @@ fte/
 │   ├── file_drop_watcher.py       # Filesystem watcher
 │   ├── correlation.py             # Correlation ID generation
 │   ├── circuit_breaker.py         # Circuit breaker state machine
+│   ├── role_gate.py               # FTE_ROLE detection and enforcement
+│   ├── claim_move.py              # Claim-by-move concurrency control
+│   ├── git_sync.py                # Git-based vault sync service
+│   ├── dashboard_merger.py        # Single-writer dashboard updates
+│   ├── approval_watcher.py        # Local approval → execution pipeline
+│   ├── rejection_handler.py       # Rejected draft escalation
+│   ├── stale_detector.py          # Stale file detection
 │   └── mcp/
 │       ├── base_server.py         # Shared MCP server utilities
 │       ├── email_server.py        # Email MCP server
@@ -101,7 +121,9 @@ fte/
 │   ├── social-platforms.json      # Platform character limits
 │   ├── schedules.json             # Scheduled task definitions
 │   ├── actions.json               # Action registry
-│   └── ecosystem.config.js        # PM2 configuration
+│   ├── ecosystem.config.js        # PM2 configuration (local)
+│   ├── ecosystem.cloud.config.js  # PM2 configuration (cloud VM)
+│   └── cloud-start.sh             # Cloud env wrapper for PM2 v6
 ├── .claude/
 │   ├── settings.json              # MCP server registration
 │   └── skills/                    # 12 Claude Code skills
@@ -135,7 +157,49 @@ fte/
 | Vault path | `/home/safdarayub/Documents/AI_Employee_Vault` | `VAULT_PATH` env |
 | Drop folder | `~/Desktop/DropForAI` | `DROP_FOLDER` env |
 | Dry-run mode | `true` | `DRY_RUN` env |
+| FTE role | (unset) | `FTE_ROLE=cloud` or `FTE_ROLE=local` |
+| Git sync interval | `60` seconds | `GIT_SYNC_INTERVAL_SECONDS` env |
 | Odoo host | `localhost:8069` | `ODOO_HOST`, `ODOO_PORT` env |
+
+## Cloud VM Setup (Platinum)
+
+```bash
+# On cloud VM (Ubuntu 24.04):
+git clone git@github.com:safdarayubpk/PersonalAIEmployee.git ~/AI_Employee_Vault
+python3 -m venv ~/fte-env
+source ~/fte-env/bin/activate
+pip install watchdog pyyaml apscheduler google-api-python-client google-auth-oauthlib
+
+# Transfer Gmail token from local (read-only OAuth token):
+# On local: scp token.json ubuntu@<VM_IP>:~/AI_Employee_Vault/
+
+# Create .env (never synced via git):
+cat > ~/AI_Employee_Vault/.env << 'EOF'
+FTE_ROLE=cloud
+VAULT_PATH=/home/ubuntu/AI_Employee_Vault
+DRY_RUN=true
+EOF
+
+# Start PM2 services:
+pm2 start config/ecosystem.cloud.config.js
+pm2 startup systemd -u ubuntu --hp /home/ubuntu
+pm2 save
+```
+
+### Platinum Live Demo Summary
+
+Verified 2026-03-12 with correlation ID `corr-2026-03-12-d16b3470`:
+
+| Step | What Happened | Agent |
+|------|--------------|-------|
+| 1 | Test email sent to Gmail | User |
+| 2 | Gmail watcher detected email (120s poll) | Cloud |
+| 3 | Orchestrator claimed, drafted, moved to Pending_Approval/ | Cloud |
+| 4 | Git-sync pushed to remote | Cloud |
+| 5 | `git pull` fetched pending approval file | Local |
+| 6 | User moved file to Approved/ | Local |
+| 7 | Approval watcher sent real email via Gmail API | Local |
+| 8 | File moved to Done/ with `status: completed` | Local |
 
 ## External Service Setup
 
@@ -152,3 +216,5 @@ fte/
 - [Lessons Learned](docs/lessons-learned.md) — Development insights across tiers
 - [Demo Script](docs/demo-script.md) — 5-10 minute demo walkthrough
 - [Gold Tier Test Plan](tests/manual/gold-tier-test-plan.md) — Manual test checklists
+- [Platinum Quickstart](specs/004-platinum-tier/quickstart.md) — Cloud VM setup and demo guide
+- [ADRs](history/adr/) — 21 Architecture Decision Records (Bronze through Platinum)
