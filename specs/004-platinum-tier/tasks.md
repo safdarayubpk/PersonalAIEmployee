@@ -200,8 +200,8 @@
 
 - [x] T044 Verify Gold-tier backward compatibility: run all existing Gold-tier workflows with FTE_ROLE=local, confirm no regressions (FR-029, FR-030, SC-006). Check: watchers, orchestrator, CEO briefing, health monitoring, Ralph Wiggum retries, circuit breakers all function identically.
 - [x] T045 Run security scan: `git log --all --diff-filter=A --name-only | grep -E '\.(env|session|token|key|pem)$'` — verify zero secrets in git history (SC-004). Test pre-commit hook blocks `git add .env && git commit`.
-- [ ] T046 Deploy to cloud VM: execute first-boot setup (T036), transfer gmail read-only token.json via scp, start PM2 services, verify pm2 list shows all healthy.
-- [ ] T047 Run end-to-end offline email demo: send real test email while local is stopped → verify cloud drafts → start local → approve → verify send → verify Done/ with correlation trail (SC-003, SC-010)
+- [x] T046 Deploy to cloud VM: execute first-boot setup (T036), transfer gmail read-only token.json via scp, start PM2 services, verify pm2 list shows all healthy.
+- [x] T047 Run end-to-end offline email demo: send real test email while local is stopped → verify cloud drafts → start local → approve → verify send → verify Done/ with correlation trail (SC-003, SC-010)
 - [x] T048 [P] Update specs/004-platinum-tier/quickstart.md with final setup instructions, troubleshooting guide, and demo script
 
 **Checkpoint**: Platinum tier fully operational on both cloud VM and local machine.
