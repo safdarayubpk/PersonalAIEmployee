@@ -1,10 +1,10 @@
 ---
 title: "secrets-detected-on-cloud"
-created: "2026-03-12T04:16:41"
+created: "2026-03-12T04:28:55"
 tier: platinum
 source: "git-sync"
 priority: sensitive
-status: needs_action
+status: pending_approval
 agent: cloud
 ---
 
