@@ -70,6 +70,15 @@ SOURCE_ACTION_MAP = {
     "daily-scheduler": None,
 }
 
+# Source-to-tool mapping: what tool the approval_watcher should call when
+# a user approves a Pending_Approval file.  Added to frontmatter as `tool:`.
+SOURCE_TOOL_MAP = {
+    "gmail-watcher": "email.send",
+    "whatsapp-watcher": None,
+    "file-drop-watcher": None,
+    "daily-scheduler": None,
+}
+
 
 def log_entry(log_file: Path, **fields) -> None:
     entry = {"timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"), **fields}
@@ -354,14 +363,20 @@ def process_file(file_info: dict, vault_root: Path, log_file: Path) -> dict:
     route = "done"
     mcp_result = None
 
+    # Determine execution tool for approval_watcher (maps source → tool name)
+    approval_tool = SOURCE_TOOL_MAP.get(file_info["source"], "")
+    tool_kwargs = {"tool": approval_tool} if approval_tool else {}
+
     if risk_level == "high":
         route = "pending_approval"
         # Use complete_file to move from In_Progress to Pending_Approval (T029)
-        complete_file(claimed_path, "Pending_Approval", vault_root, status="pending_approval")
+        complete_file(claimed_path, "Pending_Approval", vault_root,
+                      status="pending_approval", **tool_kwargs)
 
     elif risk_level == "medium":
         mcp_result = attempt_action(file_info, vault_root)
-        complete_file(claimed_path, "Pending_Approval", vault_root, status="pending_approval")
+        complete_file(claimed_path, "Pending_Approval", vault_root,
+                      status="pending_approval", **tool_kwargs)
         if mcp_result.get("attempted"):
             route = "pending_approval_with_action"
         else:
