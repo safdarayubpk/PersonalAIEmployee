@@ -5,9 +5,10 @@ tier: platinum
 source: gmail-watcher
 agent: cloud
 priority: "sensitive"
-status: needs_action
+status: pending_approval
 gmail_id: "19ce7846c1341172"
 correlation_id: "corr-2026-03-13-4bae857d"
+tool: email.send
 ---
 
 ## What happened
