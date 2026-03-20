@@ -23,6 +23,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import List, Tuple
 
 try:
     from playwright.sync_api import sync_playwright
@@ -51,7 +52,7 @@ _FALLBACK_MEDIUM = ["meeting", "schedule", "review", "approve", "confirm", "upda
                     "respond", "call", "tomorrow", "today"]
 
 
-def _load_risk_keywords() -> tuple[list[str], list[str]]:
+def _load_risk_keywords() -> Tuple[List[str], List[str]]:
     """Load risk keywords from shared config, falling back to defaults."""
     if RISK_KEYWORDS_PATH.exists():
         try:
@@ -108,7 +109,7 @@ def log_entry(log_file: Path, **fields) -> None:
 
 
 def create_needs_action(sender: str, chat_name: str, chat_type: str,
-                        message_text: str, urgency: str, media_types: list[str],
+                        message_text: str, urgency: str, media_types: List[str],
                         unread_count: int, vault_root: Path) -> str:
     """Create a Needs_Action .md file for an important message."""
     ts = datetime.now(timezone.utc)
@@ -165,7 +166,7 @@ Review and respond to this message.
     return filename
 
 
-def detect_media(message_el) -> list[str]:
+def detect_media(message_el) -> List[str]:
     """Detect media types in a message element."""
     media = []
     try:
@@ -180,10 +181,14 @@ def detect_media(message_el) -> list[str]:
     return media
 
 
-def extract_messages(page, max_messages: int = 10) -> list[dict]:
-    """Extract recent messages from the currently open chat."""
+def extract_messages(page, max_messages: int = 10) -> List[dict]:
+    """Extract recent messages from the currently open chat.
+
+    Uses multiple selector strategies for WhatsApp Web 2026 compatibility.
+    """
     messages = []
     try:
+        # Strategy 1: Try original selector
         rows = page.query_selector_all(SELECTORS["message_row"])
         for row in rows[-max_messages:]:
             text_el = row.query_selector(SELECTORS["message_text"])
@@ -191,46 +196,133 @@ def extract_messages(page, max_messages: int = 10) -> list[dict]:
             media = detect_media(row)
             if text or media:
                 messages.append({"text": text, "media": media})
+
+        # Strategy 2: If no messages found, use JS to extract visible text
+        if not messages:
+            texts = page.evaluate('''() => {
+                const msgs = [];
+                // Look for message containers with copyable text
+                const candidates = document.querySelectorAll(
+                    'div.copyable-text, span.selectable-text, div[data-pre-plain-text]'
+                );
+                for (const el of candidates) {
+                    const text = el.innerText?.trim();
+                    if (text && text.length > 0 && text.length < 2000) {
+                        msgs.push(text);
+                    }
+                }
+                // Fallback: get any visible text from message area (right pane)
+                if (msgs.length === 0) {
+                    const allSpans = document.querySelectorAll('span');
+                    for (const sp of allSpans) {
+                        const rect = sp.getBoundingClientRect();
+                        // Right pane messages (x > 400, y > 100)
+                        if (rect.x > 400 && rect.y > 100 && rect.width > 50) {
+                            const text = sp.innerText?.trim();
+                            if (text && text.length > 2 && text.length < 500 &&
+                                !/^\\d{1,2}:\\d{2}/.test(text)) {
+                                msgs.push(text);
+                            }
+                        }
+                    }
+                }
+                return msgs.slice(-10);
+            }''')
+            for text in texts:
+                messages.append({"text": text, "media": []})
     except Exception as e:
         print(f"Warning: Failed to extract messages: {e}")
     return messages
 
 
-def get_unread_chats(page) -> list[dict]:
-    """Find chats with unread message badges."""
+def get_unread_chats(page) -> List[dict]:
+    """Find chats with unread message badges using DOM tree walker.
+
+    WhatsApp Web 2026 no longer uses aria-label attributes for badges.
+    Instead we walk the DOM looking for small <span> elements containing
+    1-4 digit text (unread count badges) positioned in the chat pane.
+    """
     chats = []
     try:
-        badge_els = page.query_selector_all(SELECTORS["unread_chat"])
-        for badge in badge_els:
-            chat_row = badge.evaluate_handle(
-                "el => el.closest('[role=\"listitem\"]') || el.closest('[data-id]')"
-            )
-            if not chat_row:
+        raw = page.evaluate('''() => {
+            const results = [];
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+            let node;
+            while (node = walker.nextNode()) {
+                const text = (node.childNodes.length === 1 && node.childNodes[0].nodeType === 3)
+                             ? node.childNodes[0].textContent.trim() : '';
+                if (!/^\\d{1,4}$/.test(text)) continue;
+                const rect = node.getBoundingClientRect();
+                if (rect.width <= 0 || rect.width > 50 || rect.x < 400 || rect.x > 600) continue;
+                if (rect.y < 140) continue;
+
+                let title = 'Unknown';
+                let fallbackTitle = null;
+                let parent = node.parentElement;
+                for (let i = 0; i < 15; i++) {
+                    if (!parent) break;
+                    const titleEls = parent.querySelectorAll('span[title]');
+                    if (titleEls.length >= 2) {
+                        // Found parent with 2+ span[title] — pick the topmost one (chat name)
+                        let best = null;
+                        let bestY = Infinity;
+                        for (const te of titleEls) {
+                            const tr = te.getBoundingClientRect();
+                            if (tr.y > 0 && tr.y < bestY) {
+                                bestY = tr.y;
+                                best = te;
+                            }
+                        }
+                        if (best) title = best.getAttribute('title');
+                        break;
+                    } else if (titleEls.length === 1 && !fallbackTitle) {
+                        // Remember first single match as fallback, but keep walking up
+                        fallbackTitle = titleEls[0].getAttribute('title');
+                    }
+                    parent = parent.parentElement;
+                }
+                // Use fallback only if we never found 2+ spans
+                if (title === 'Unknown' && fallbackTitle) title = fallbackTitle;
+                results.push({title: title, count: parseInt(text), y: Math.round(rect.y)});
+            }
+            return results;
+        }''')
+
+        # Deduplicate by title (keep first occurrence)
+        seen = set()
+        for item in raw:
+            if item['title'] in seen or item['title'] == 'Unknown':
                 continue
+            seen.add(item['title'])
 
-            title_el = chat_row.as_element().query_selector(SELECTORS["chat_title"])
-            title = title_el.get_attribute("title") if title_el else "Unknown"
-
-            badge_text = badge.inner_text().strip()
+            # Find clickable element for this chat by title
             try:
-                count = int(badge_text)
-            except ValueError:
-                count = 1
+                el = page.query_selector(f'span[title="{item["title"]}"]')
+                if el:
+                    # Walk up to find the clickable row container
+                    row = el.evaluate_handle(
+                        "el => el.closest('[role=\"listitem\"]') || el.closest('[data-id]') || el.parentElement.parentElement.parentElement"
+                    )
+                    chats.append({
+                        "element": row.as_element() if row else el,
+                        "title": item["title"],
+                        "unread_count": item["count"],
+                    })
+            except Exception:
+                pass
 
-            chats.append({
-                "element": chat_row.as_element(),
-                "title": title,
-                "unread_count": count,
-            })
-    except Exception:
-        pass
+        if raw:
+            titles = [c["title"] for c in chats]
+            print(f"  Badge scan: {len(raw)} badges, {len(chats)} chats: {titles[:5]}")
+    except Exception as e:
+        print(f"  Badge scan error: {e}")
     return chats
 
 
 def monitor_loop(page, vault_root: Path, interval: int) -> None:
     """Main monitoring loop."""
     log_file = vault_root / "Logs" / "whatsapp.jsonl"
-    processed_ids: set[str] = set()
+    processed_ids = set()  # type: set
 
     log_entry(log_file, component=COMPONENT, action="startup", status="success",
               detail=f"Monitoring WhatsApp Web, poll interval {interval}s")
@@ -256,10 +348,12 @@ def monitor_loop(page, vault_root: Path, interval: int) -> None:
                     continue
 
                 messages = extract_messages(page)
-                if not messages:
-                    continue
-
                 combined_text = " ".join(m["text"] for m in messages if m["text"])
+
+                # Fallback: if no messages could be extracted, use a generic description
+                if not combined_text:
+                    combined_text = f"New message from {chat['title']} ({chat['unread_count']} unread)"
+                    print(f"  Warning: Could not extract message text for {chat['title']}")
                 all_media = []
                 for m in messages:
                     all_media.extend(m["media"])
@@ -270,6 +364,10 @@ def monitor_loop(page, vault_root: Path, interval: int) -> None:
                 sender = chat["title"]
 
                 urgency = classify_urgency(combined_text)
+
+                # If we couldn't extract real message text, treat as at least sensitive
+                if not messages and urgency == "routine":
+                    urgency = "sensitive"
 
                 if urgency == "routine":
                     log_entry(log_file, component=COMPONENT, action="classify_message",
@@ -301,9 +399,9 @@ def monitor_loop(page, vault_root: Path, interval: int) -> None:
                       status="failure", detail=error_str)
             print(f"Poll error: {e}")
 
-            # Detect session loss — if chat list is gone, session is disconnected
+            # Detect session loss — if no span[title] visible, session is disconnected
             try:
-                if not page.query_selector(SELECTORS["chat_list"]):
+                if not page.query_selector('span[title]'):
                     log_entry(log_file, component=COMPONENT, action="session_loss",
                               status="failure",
                               detail="WhatsApp session lost — chat list not found")
@@ -383,12 +481,13 @@ def main() -> None:
             print("If QR code appears, scan it with your phone.")
 
         try:
-            page.wait_for_selector(SELECTORS["chat_list"], timeout=60000)
+            page.wait_for_selector('span[title]', timeout=180000)
+            page.wait_for_timeout(5000)  # Extra settle time for chat list
             print("WhatsApp Web loaded successfully.")
             log_entry(log_file, component=COMPONENT, action="login", status="success",
                       detail="WhatsApp Web loaded")
         except Exception:
-            print("Error: WhatsApp Web did not load within 60 seconds.")
+            print("Error: WhatsApp Web did not load within 180 seconds.")
             print("Try running without --headless to scan QR code.")
             cleanup()
 
