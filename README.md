@@ -1,8 +1,28 @@
 # Personal AI Employee
 
-**Hackathon Tier: Platinum**
+**Hackathon Tier: Platinum | All 7 Capabilities Live**
 
 A hybrid cloud-local autonomous AI agent that monitors multiple sources (filesystem, Gmail, WhatsApp), processes tasks through a git-synced Obsidian vault pipeline, and executes actions via MCP servers with human-in-the-loop safety gates. The cloud VM (Ubuntu 24.04) works 24/7 even when your laptop is off — detecting events, drafting responses, and queueing approval requests. When you come back online, review and approve with a single file move. Built for the 2026 Personal AI Employee Hackathon.
+
+## Live Capabilities
+
+| # | Capability | Status | What It Does |
+|---|---|---|---|
+| 1 | **Gmail** | Live | Read, send, manage emails via natural language |
+| 2 | **WhatsApp Monitoring** | Live | 24/7 message detection, urgency classification |
+| 3 | **Odoo ERP** | Verified | Invoices, payments, financial summaries |
+| 4 | **Facebook Posting** | Live | AI drafts content, you approve, it publishes |
+| 5 | **CEO Briefing** | Live | Weekly report: financials, tasks, social, bottlenecks |
+| 6 | **Scheduling** | Ready | 8 automated recurring jobs (Gmail, inbox sweep, reports) |
+| 7 | **Health Monitoring** | Active | Circuit breakers for 5 services, auto-recovery |
+
+### Safety Model (Human-in-the-Loop)
+
+| Risk Level | Example | What Happens |
+|---|---|---|
+| Routine | Read emails, list invoices | Auto-executes |
+| Sensitive | Send email, post to social | You approve first |
+| Critical | Register payment, delete data | Blocked until you confirm |
 
 ## Tiers
 
@@ -141,9 +161,12 @@ fte/
 │       ├── ceo-briefing/
 │       └── health-monitor/
 ├── docs/
+│   ├── how-to-use-ai-employee.md  # Usage guide for all 7 capabilities
+│   ├── ai-employee-pitch.md       # Interview & presentation pitch
 │   ├── architecture.md            # System architecture
 │   ├── lessons-learned.md         # Development insights
 │   └── demo-script.md             # 5-10 min demo walkthrough
+├── pictures/                       # AI-generated visuals for social media
 ├── tests/
 │   ├── unit/                      # Unit tests
 │   └── manual/                    # Manual test plans
@@ -209,9 +232,27 @@ Verified 2026-03-12 with correlation ID `corr-2026-03-12-d16b3470`:
 - **Twitter/X**: API keys via Twitter Developer Portal (OAuth 1.0a)
 - **Odoo**: Self-hosted Odoo 19 Community, set `ODOO_DB`, `ODOO_USER`, `ODOO_PASSWORD` env vars
 
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.13+ |
+| AI | Claude (Anthropic) via Claude Code CLI |
+| Communication | MCP (Model Context Protocol) servers |
+| Process Manager | PM2 (auto-restart, logging) |
+| Browser Automation | Playwright + Chromium (WhatsApp) |
+| ERP | Odoo 19 Community (Docker) |
+| Email | Gmail API (OAuth2) |
+| Social Media | Facebook Graph API, Twitter API v2 |
+| Scheduling | APScheduler (cron-based) |
+| Knowledge Base | Obsidian vault (markdown + YAML frontmatter) |
+| Infrastructure | Local machine + Oracle Cloud VM (Always Free tier) |
+
 ## Documentation
 
-- **[User Guide](docs/USER_GUIDE.md) — Complete setup and usage guide for beginners (START HERE)**
+- **[How to Use](docs/how-to-use-ai-employee.md) — Quick reference for all 7 capabilities (START HERE)**
+- [Pitch & Presentation](docs/ai-employee-pitch.md) — Elevator pitch, interview pitch, architecture overview
+- **[User Guide](docs/USER_GUIDE.md) — Complete setup and usage guide for beginners**
 - [Architecture](docs/architecture.md) — System diagrams and component descriptions
 - [Lessons Learned](docs/lessons-learned.md) — Development insights across tiers
 - [Demo Script](docs/demo-script.md) — 5-10 minute demo walkthrough
